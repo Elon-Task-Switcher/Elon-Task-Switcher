@@ -62,8 +62,9 @@ development_status:
   4-2-sauvegarder-les-reglages-localement: done
   4-3-restaurer-les-parametres-par-defaut: done
   4-4-preparer-le-projet-open-source: done
-  4-5-produire-un-build-statique-deployable: backlog
+  4-5-produire-un-build-statique-deployable: done
   epic-4-retrospective: optional
+
 
 
 

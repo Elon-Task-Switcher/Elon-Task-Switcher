@@ -33,6 +33,8 @@ h2 { margin-top: 0; }
 .audio-message { margin: 0 auto 1rem; padding: .75rem 1rem; max-width: 34rem; border-radius: 1rem; color: #5f1020; background: #ffd9df; }
 .primary-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; }
 .settings-card label { display: grid; gap: .35rem; margin: 0 0 1rem; font-weight: 800; }
+.checkbox-label { display: flex !important; align-items: center; gap: .7rem; }
+.checkbox-label input { width: auto; }
 .settings-card input { width: 100%; border: 1px solid #c8d2e8; border-radius: .9rem; padding: .75rem 1rem; background: #fff; color: #172033; }
 @media (min-width: 860px) { .app-shell { grid-template-columns: minmax(0, 44rem) minmax(18rem, 24rem); align-items: center; } }
 @media (prefers-color-scheme: dark) {
@@ -41,3 +43,5 @@ h2 { margin-top: 0; }
   .next-event, .interval-count { color: #b8c3dc; }
   .settings-card input { background: #101524; color: #e9eefb; border-color: #3b4967; }
 }
+
+

@@ -36,13 +36,25 @@ describe('App', () => {
     const { unmount } = render(<App />);
     await user.click(screen.getByLabelText(/Work duration/i));
     await user.keyboard('{Control>}a{/Control}7');
+    await user.click(screen.getByLabelText(/Auto-start next task loop/i));
     expect(localStorage.getItem('timeboucle.settings.v1')).toContain('7');
+    expect(localStorage.getItem('timeboucle.settings.v1')).toContain('autoStartNextWork');
     unmount();
     render(<App />);
     expect(screen.getByLabelText('Time remaining')).toHaveTextContent('07:00');
+    expect(screen.getByLabelText(/Auto-start next task loop/i)).toBeChecked();
     await user.click(screen.getByRole('button', { name: 'Restore Defaults' }));
     expect(screen.getByLabelText('Time remaining')).toHaveTextContent('05:00');
+    expect(screen.getByLabelText(/Auto-start next task loop/i)).not.toBeChecked();
+  });
+
+  it('persists session state across reloads', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Start' }));
+    expect(screen.getByText('Work running')).toBeInTheDocument();
+    unmount();
+    render(<App />);
+    expect(screen.getByText('Work running')).toBeInTheDocument();
   });
 });
-
-

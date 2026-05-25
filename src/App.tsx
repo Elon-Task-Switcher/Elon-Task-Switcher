@@ -2,9 +2,12 @@
 import { playReminderSound } from './sound';
 import {
   DEFAULT_SETTINGS,
+  defaultSession,
   formatTime,
+  loadSession,
   loadSettings,
   minutesToMs,
+  saveSession,
   saveSettings,
   sanitizeSettings,
   type TimerSettings,
@@ -24,7 +27,8 @@ function statusLabel(status: TimerStatus): string {
   return labels[status];
 }
 
-function nextEvent(status: TimerStatus): string {
+function nextEvent(status: TimerStatus, autoStartNextWork: boolean): string {
+  if (status === 'running' && autoStartNextWork) return 'Next task loop starts automatically when this one ends.';
   const labels: Record<TimerStatus, string> = {
     idle: 'Switch task when the timer ends.',
     running: 'Switch task when the timer ends.',
@@ -43,12 +47,23 @@ function durationForStatus(settings: TimerSettings, status: TimerStatus): number
 
 export function App() {
   const [settings, setSettings] = useState<TimerSettings>(() => loadSettings());
-  const [status, setStatus] = useState<TimerStatus>('idle');
-  const [remainingMs, setRemainingMs] = useState(() => minutesToMs(settings.workMinutes));
-  const [completedIntervals, setCompletedIntervals] = useState(0);
+  const initialSession = useMemo(() => loadSession(settings), []);
+  const [status, setStatus] = useState<TimerStatus>(initialSession.status);
+  const [remainingMs, setRemainingMs] = useState(initialSession.remainingMs);
+  const [completedIntervals, setCompletedIntervals] = useState(initialSession.completedIntervals);
   const [audioMessage, setAudioMessage] = useState('');
-  const deadlineRef = useRef<number | null>(null);
+  const deadlineRef = useRef<number | null>(initialSession.deadline);
+  const statusRef = useRef<TimerStatus>(initialSession.status);
+  const remainingRef = useRef(initialSession.remainingMs);
+  const completedRef = useRef(initialSession.completedIntervals);
   const modeDurationMs = useMemo(() => durationForStatus(settings, status), [settings, status]);
+
+  useEffect(() => {
+    statusRef.current = status;
+    remainingRef.current = remainingMs;
+    completedRef.current = completedIntervals;
+    saveSession({ status, remainingMs, completedIntervals, deadline: deadlineRef.current });
+  }, [status, remainingMs, completedIntervals]);
 
   useEffect(() => {
     saveSettings(settings);
@@ -89,19 +104,30 @@ export function App() {
       return;
     }
 
-    const nextCount = completedIntervals + 1;
+    const nextCount = completedRef.current + 1;
     setCompletedIntervals(nextCount);
-    setRemainingMs(0);
     if (nextCount >= settings.intervalsBeforeBreak) {
+      setRemainingMs(0);
       setStatus('break-due');
-    } else {
-      setStatus('ended');
+      return;
     }
+
+    if (settings.autoStartNextWork) {
+      const duration = minutesToMs(settings.workMinutes);
+      setRemainingMs(duration);
+      deadlineRef.current = Date.now() + duration;
+      setStatus('running');
+      return;
+    }
+
+    setRemainingMs(0);
+    setStatus('ended');
   }
 
   function startWork() {
-    deadlineRef.current = Date.now() + (remainingMs > 0 ? remainingMs : minutesToMs(settings.workMinutes));
-    setRemainingMs((current) => (current > 0 ? current : minutesToMs(settings.workMinutes)));
+    const nextRemaining = remainingRef.current > 0 ? remainingRef.current : minutesToMs(settings.workMinutes);
+    deadlineRef.current = Date.now() + nextRemaining;
+    setRemainingMs(nextRemaining);
     setStatus('running');
   }
 
@@ -116,6 +142,7 @@ export function App() {
     deadlineRef.current = null;
     setStatus('idle');
     setRemainingMs(minutesToMs(settings.workMinutes));
+    setCompletedIntervals(0);
   }
 
   function continueNextWork() {
@@ -141,23 +168,24 @@ export function App() {
     continueNextWork();
   }
 
-  function updateSetting(key: keyof TimerSettings, value: number) {
+  function updateSetting(key: keyof TimerSettings, value: number | boolean) {
     const next = sanitizeSettings({ ...settings, [key]: value });
     setSettings(next);
-    if (status === 'idle') setRemainingMs(minutesToMs(next.workMinutes));
+    if (statusRef.current === 'idle') setRemainingMs(minutesToMs(next.workMinutes));
   }
 
   function restoreDefaults() {
+    const session = defaultSession(DEFAULT_SETTINGS);
     setSettings(DEFAULT_SETTINGS);
-    deadlineRef.current = null;
-    setStatus('idle');
-    setRemainingMs(minutesToMs(DEFAULT_SETTINGS.workMinutes));
-    setCompletedIntervals(0);
+    deadlineRef.current = session.deadline;
+    setStatus(session.status);
+    setRemainingMs(session.remainingMs);
+    setCompletedIntervals(session.completedIntervals);
   }
 
   const canStart = status === 'idle' || status === 'ended' || status === 'break-complete';
   const canPause = status === 'running' || status === 'break-running';
-  const canReset = status !== 'idle' || remainingMs !== modeDurationMs;
+  const canReset = status !== 'idle' || remainingMs !== modeDurationMs || completedIntervals !== 0;
 
   return (
     <main className="app-shell" data-status={status}>
@@ -166,7 +194,7 @@ export function App() {
         <h1 id="app-title">Task switching timer</h1>
         <p className="mode-label" aria-live="polite">{statusLabel(status)}</p>
         <div className="countdown" aria-label="Time remaining">{formatTime(remainingMs)}</div>
-        <p className="next-event">{nextEvent(status)}</p>
+        <p className="next-event">{nextEvent(status, settings.autoStartNextWork)}</p>
         <p className="interval-count">Completed intervals: {completedIntervals} / {settings.intervalsBeforeBreak}</p>
 
         {audioMessage ? <p role="alert" className="audio-message">{audioMessage}</p> : null}
@@ -197,6 +225,10 @@ export function App() {
         <label>
           Intervals before break
           <input type="number" min="1" max="180" value={settings.intervalsBeforeBreak} onChange={(event) => updateSetting('intervalsBeforeBreak', Number(event.target.value))} />
+        </label>
+        <label className="checkbox-label">
+          <input type="checkbox" checked={settings.autoStartNextWork} onChange={(event) => updateSetting('autoStartNextWork', event.target.checked)} />
+          Auto-start next task loop
         </label>
         <button type="button" className="secondary" onClick={restoreDefaults}>Restore Defaults</button>
       </section>

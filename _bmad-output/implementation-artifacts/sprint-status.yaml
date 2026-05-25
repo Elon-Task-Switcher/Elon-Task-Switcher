@@ -58,12 +58,13 @@ development_status:
   3-5-ignorer-une-pause-proposee: done
   epic-3-retrospective: optional
   epic-4: backlog
-  4-1-configurer-les-durees-et-cadence: backlog
+  4-1-configurer-les-durees-et-cadence: done
   4-2-sauvegarder-les-reglages-localement: backlog
   4-3-restaurer-les-parametres-par-defaut: backlog
   4-4-preparer-le-projet-open-source: backlog
   4-5-produire-un-build-statique-deployable: backlog
   epic-4-retrospective: optional
+
 
 
 

@@ -52,6 +52,7 @@ export function App() {
   const [remainingMs, setRemainingMs] = useState(initialSession.remainingMs);
   const [completedIntervals, setCompletedIntervals] = useState(initialSession.completedIntervals);
   const [audioMessage, setAudioMessage] = useState('');
+  const [runId, setRunId] = useState(0);
   const deadlineRef = useRef<number | null>(initialSession.deadline);
   const statusRef = useRef<TimerStatus>(initialSession.status);
   const remainingRef = useRef(initialSession.remainingMs);
@@ -89,7 +90,7 @@ export function App() {
     }, 250);
 
     return () => window.clearInterval(interval);
-  }, [status]);
+  }, [status, runId]);
 
   async function ring() {
     const result = await playReminderSound();
@@ -116,6 +117,7 @@ export function App() {
       const duration = minutesToMs(settings.workMinutes);
       setRemainingMs(duration);
       deadlineRef.current = Date.now() + duration;
+      setRunId((id) => id + 1);
       setStatus('running');
       return;
     }
@@ -128,6 +130,7 @@ export function App() {
     const nextRemaining = remainingRef.current > 0 ? remainingRef.current : minutesToMs(settings.workMinutes);
     deadlineRef.current = Date.now() + nextRemaining;
     setRemainingMs(nextRemaining);
+    setRunId((id) => id + 1);
     setStatus('running');
   }
 
@@ -216,11 +219,11 @@ export function App() {
         <h2 id="settings-title">Settings</h2>
         <label>
           Work duration (minutes)
-          <input type="number" min="1" max="180" value={settings.workMinutes} onChange={(event) => updateSetting('workMinutes', Number(event.target.value))} />
+          <input type="number" min="0.05" step="0.05" max="180" value={settings.workMinutes} onChange={(event) => updateSetting('workMinutes', Number(event.target.value))} />
         </label>
         <label>
           Break duration (minutes)
-          <input type="number" min="1" max="180" value={settings.breakMinutes} onChange={(event) => updateSetting('breakMinutes', Number(event.target.value))} />
+          <input type="number" min="0.05" step="0.05" max="180" value={settings.breakMinutes} onChange={(event) => updateSetting('breakMinutes', Number(event.target.value))} />
         </label>
         <label>
           Intervals before break
@@ -235,3 +238,4 @@ export function App() {
     </main>
   );
 }
+

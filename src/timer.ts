@@ -29,6 +29,10 @@ export function minutesToMs(minutes: number): number {
   return minutes * 60 * 1000;
 }
 
+export function sanitizePositiveNumber(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(180, Math.max(0.05, value));
+}
 export function sanitizePositiveInteger(value: number, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;
   const rounded = Math.round(value);
@@ -37,8 +41,8 @@ export function sanitizePositiveInteger(value: number, fallback: number): number
 
 export function sanitizeSettings(settings: Partial<TimerSettings>): TimerSettings {
   return {
-    workMinutes: sanitizePositiveInteger(settings.workMinutes ?? DEFAULT_SETTINGS.workMinutes, DEFAULT_SETTINGS.workMinutes),
-    breakMinutes: sanitizePositiveInteger(settings.breakMinutes ?? DEFAULT_SETTINGS.breakMinutes, DEFAULT_SETTINGS.breakMinutes),
+    workMinutes: sanitizePositiveNumber(settings.workMinutes ?? DEFAULT_SETTINGS.workMinutes, DEFAULT_SETTINGS.workMinutes),
+    breakMinutes: sanitizePositiveNumber(settings.breakMinutes ?? DEFAULT_SETTINGS.breakMinutes, DEFAULT_SETTINGS.breakMinutes),
     intervalsBeforeBreak: sanitizePositiveInteger(settings.intervalsBeforeBreak ?? DEFAULT_SETTINGS.intervalsBeforeBreak, DEFAULT_SETTINGS.intervalsBeforeBreak),
     autoStartNextWork: Boolean(settings.autoStartNextWork ?? DEFAULT_SETTINGS.autoStartNextWork),
   };
@@ -114,3 +118,6 @@ export function formatTime(milliseconds: number): string {
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
+
+
+

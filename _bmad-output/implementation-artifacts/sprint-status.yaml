@@ -57,13 +57,14 @@ development_status:
   3-4-reprendre-les-cycles-apres-une-pause: done
   3-5-ignorer-une-pause-proposee: done
   epic-3-retrospective: done
-  epic-4: backlog
+  epic-4: done
   4-1-configurer-les-durees-et-cadence: done
   4-2-sauvegarder-les-reglages-localement: done
   4-3-restaurer-les-parametres-par-defaut: done
   4-4-preparer-le-projet-open-source: done
   4-5-produire-un-build-statique-deployable: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
+
 
 
 

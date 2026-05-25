@@ -1,4 +1,4 @@
-﻿# TimeBoucle
+# Elon Task Switcher
 
 Open-source task-switching timer for short work loops.
 

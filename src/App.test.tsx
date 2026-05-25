@@ -1,4 +1,4 @@
-﻿import { render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -11,7 +11,7 @@ describe('App', () => {
 
   it('shows the default work timer on load', () => {
     render(<App />);
-    expect(screen.getByText('TimeBoucle')).toBeInTheDocument();
+    expect(screen.getByText('Elon Task Switcher')).toBeInTheDocument();
     expect(screen.getByText('Work')).toBeInTheDocument();
     expect(screen.getByLabelText('Time remaining')).toHaveTextContent('05:00');
     expect(screen.getByText(/Switch task when the timer ends/i)).toBeInTheDocument();
@@ -37,8 +37,8 @@ describe('App', () => {
     await user.click(screen.getByLabelText(/Work duration/i));
     await user.keyboard('{Control>}a{/Control}7');
     await user.click(screen.getByLabelText(/Auto-start next task loop/i));
-    expect(localStorage.getItem('timeboucle.settings.v1')).toContain('7');
-    expect(localStorage.getItem('timeboucle.settings.v1')).toContain('autoStartNextWork');
+    expect(localStorage.getItem('elon-task-switcher.settings.v1')).toContain('7');
+    expect(localStorage.getItem('elon-task-switcher.settings.v1')).toContain('autoStartNextWork');
     unmount();
     render(<App />);
     expect(screen.getByLabelText('Time remaining')).toHaveTextContent('07:00');

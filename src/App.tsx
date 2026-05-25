@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { playReminderSound } from './sound';
 import {
   DEFAULT_SETTINGS,
@@ -193,7 +193,7 @@ export function App() {
   return (
     <main className="app-shell" data-status={status}>
       <section className="timer-card" aria-labelledby="app-title">
-        <p className="eyebrow">TimeBoucle</p>
+        <p className="eyebrow">Elon Task Switcher</p>
         <h1 id="app-title">Task switching timer</h1>
         <p className="mode-label" aria-live="polite">{statusLabel(status)}</p>
         <div className="countdown" aria-label="Time remaining">{formatTime(remainingMs)}</div>
@@ -238,4 +238,3 @@ export function App() {
     </main>
   );
 }
-

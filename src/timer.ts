@@ -1,4 +1,4 @@
-﻿export type TimerMode = 'work' | 'break';
+export type TimerMode = 'work' | 'break';
 export type TimerStatus = 'idle' | 'running' | 'paused' | 'ended' | 'break-due' | 'break-running' | 'break-complete';
 
 export type TimerSettings = {
@@ -22,8 +22,8 @@ export const DEFAULT_SETTINGS: TimerSettings = {
   autoStartNextWork: false,
 };
 
-export const SETTINGS_STORAGE_KEY = 'timeboucle.settings.v1';
-export const SESSION_STORAGE_KEY = 'timeboucle.session.v1';
+export const SETTINGS_STORAGE_KEY = 'elon-task-switcher.settings.v1';
+export const SESSION_STORAGE_KEY = 'elon-task-switcher.session.v1';
 
 export function minutesToMs(minutes: number): number {
   return minutes * 60 * 1000;
@@ -118,6 +118,3 @@ export function formatTime(milliseconds: number): string {
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
-
-
-

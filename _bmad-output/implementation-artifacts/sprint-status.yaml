@@ -50,13 +50,13 @@ development_status:
   2-3-gerer-le-blocage-audio-navigateur: done
   2-4-afficher-l-etat-switch-task: done
   epic-2-retrospective: done
-  epic-3: backlog
+  epic-3: done
   3-1-compter-les-intervalles-de-travail-termines: done
   3-2-detecter-quand-la-pause-est-due: done
   3-3-demarrer-et-terminer-une-pause: done
   3-4-reprendre-les-cycles-apres-une-pause: done
   3-5-ignorer-une-pause-proposee: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
   epic-4: backlog
   4-1-configurer-les-durees-et-cadence: done
   4-2-sauvegarder-les-reglages-localement: done
@@ -64,6 +64,7 @@ development_status:
   4-4-preparer-le-projet-open-source: done
   4-5-produire-un-build-statique-deployable: done
   epic-4-retrospective: optional
+
 
 
 

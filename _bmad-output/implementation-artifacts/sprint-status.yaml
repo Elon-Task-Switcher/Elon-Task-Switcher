@@ -48,7 +48,7 @@ development_status:
   2-1-jouer-un-son-a-la-fin-du-cycle-de-travail: done
   2-2-tester-le-son-manuellement: done
   2-3-gerer-le-blocage-audio-navigateur: done
-  2-4-afficher-l-etat-switch-task: backlog
+  2-4-afficher-l-etat-switch-task: done
   epic-2-retrospective: optional
   epic-3: backlog
   3-1-compter-les-intervalles-de-travail-termines: backlog
@@ -64,6 +64,7 @@ development_status:
   4-4-preparer-le-projet-open-source: backlog
   4-5-produire-un-build-statique-deployable: backlog
   epic-4-retrospective: optional
+
 
 
 

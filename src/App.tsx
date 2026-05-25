@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { playReminderSound } from './sound';
+import { playReminderSound, startTickTock, stopTickTock } from './sound';
 import {
   DEFAULT_SETTINGS,
   defaultSession,
@@ -20,7 +20,7 @@ function statusLabel(status: TimerStatus): string {
     running: 'Work running',
     paused: 'Paused',
     ended: 'Switch task',
-    'break-due': 'Break due',
+    'break-due': 'Break starting',
     'break-running': 'Break',
     'break-complete': 'Break complete',
   };
@@ -34,8 +34,8 @@ function nextEvent(status: TimerStatus, autoStartNextWork: boolean): string {
     running: 'Switch task when the timer ends.',
     paused: 'Resume when ready.',
     ended: 'Switch task, then continue to the next loop.',
-    'break-due': 'Start a break or skip it.',
-    'break-running': 'Return to work when the break ends.',
+    'break-due': 'Break starts automatically.',
+    'break-running': 'Tick-tock plays during the break. Return to work when it ends.',
     'break-complete': 'Resume work loops.',
   };
   return labels[status];
@@ -76,6 +76,12 @@ export function App() {
   }, [settings, status]);
 
   useEffect(() => {
+    if (status === 'break-running') {
+      void startBreakTickTock();
+    } else {
+      stopTickTock();
+    }
+
     if (status !== 'running' && status !== 'break-running') return;
     if (!deadlineRef.current) deadlineRef.current = Date.now() + remainingMs;
 
@@ -92,14 +98,22 @@ export function App() {
     return () => window.clearInterval(interval);
   }, [status, runId]);
 
+  useEffect(() => () => stopTickTock(), []);
+
   async function ring() {
     const result = await playReminderSound();
     setAudioMessage(result.ok ? '' : result.reason);
   }
 
+  async function startBreakTickTock() {
+    const result = await startTickTock();
+    if (!result.ok) setAudioMessage(result.reason);
+  }
+
   async function handleTimerComplete(currentStatus: TimerStatus) {
     await ring();
     if (currentStatus === 'break-running') {
+      stopTickTock();
       setStatus('break-complete');
       setRemainingMs(0);
       return;
@@ -108,8 +122,7 @@ export function App() {
     const nextCount = completedRef.current + 1;
     setCompletedIntervals(nextCount);
     if (nextCount >= settings.intervalsBeforeBreak) {
-      setRemainingMs(0);
-      setStatus('break-due');
+      startBreak();
       return;
     }
 
@@ -137,11 +150,13 @@ export function App() {
   function pause() {
     if (status !== 'running' && status !== 'break-running') return;
     if (deadlineRef.current) setRemainingMs(Math.max(0, deadlineRef.current - Date.now()));
+    stopTickTock();
     deadlineRef.current = null;
     setStatus('paused');
   }
 
   function reset() {
+    stopTickTock();
     deadlineRef.current = null;
     setStatus('idle');
     setRemainingMs(minutesToMs(settings.workMinutes));
@@ -149,6 +164,7 @@ export function App() {
   }
 
   function continueNextWork() {
+    stopTickTock();
     deadlineRef.current = null;
     setStatus('idle');
     setRemainingMs(minutesToMs(settings.workMinutes));
@@ -158,6 +174,7 @@ export function App() {
     const duration = minutesToMs(settings.breakMinutes);
     setRemainingMs(duration);
     deadlineRef.current = Date.now() + duration;
+    setRunId((id) => id + 1);
     setStatus('break-running');
   }
 
@@ -208,8 +225,6 @@ export function App() {
           <button type="button" onClick={pause} disabled={!canPause}>Pause</button>
           <button type="button" onClick={reset} disabled={!canReset}>Reset</button>
           {status === 'ended' ? <button type="button" onClick={continueNextWork}>Next loop</button> : null}
-          {status === 'break-due' ? <button type="button" onClick={startBreak}>Start break</button> : null}
-          {status === 'break-due' ? <button type="button" onClick={skipBreak}>Skip break</button> : null}
           {status === 'break-complete' ? <button type="button" onClick={finishBreakCycle}>Resume work</button> : null}
           <button type="button" className="secondary" onClick={() => void ring()}>Test Sound</button>
         </div>

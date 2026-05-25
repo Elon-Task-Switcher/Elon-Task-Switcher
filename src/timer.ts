@@ -19,7 +19,7 @@ export const DEFAULT_SETTINGS: TimerSettings = {
   workMinutes: 5,
   breakMinutes: 5,
   intervalsBeforeBreak: 12,
-  autoStartNextWork: false,
+  autoStartNextWork: true,
 };
 
 export const SETTINGS_STORAGE_KEY = 'elon-task-switcher.settings.v1';

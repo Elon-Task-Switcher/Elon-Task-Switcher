@@ -36,7 +36,7 @@ describe('App', () => {
     const { unmount } = render(<App />);
     await user.click(screen.getByLabelText(/Work duration/i));
     await user.keyboard('{Control>}a{/Control}7');
-    await user.click(screen.getByLabelText(/Auto-start next task loop/i));
+    expect(screen.getByLabelText(/Auto-start next task loop/i)).toBeChecked();
     expect(localStorage.getItem('elon-task-switcher.settings.v1')).toContain('7');
     expect(localStorage.getItem('elon-task-switcher.settings.v1')).toContain('autoStartNextWork');
     unmount();
@@ -45,7 +45,7 @@ describe('App', () => {
     expect(screen.getByLabelText(/Auto-start next task loop/i)).toBeChecked();
     await user.click(screen.getByRole('button', { name: 'Restore Defaults' }));
     expect(screen.getByLabelText('Time remaining')).toHaveTextContent('05:00');
-    expect(screen.getByLabelText(/Auto-start next task loop/i)).not.toBeChecked();
+    expect(screen.getByLabelText(/Auto-start next task loop/i)).toBeChecked();
   });
 
   it('persists session state across reloads', async () => {

@@ -114,11 +114,19 @@ export function App() {
     await ring();
     if (currentStatus === 'break-running') {
       stopTickTock();
+      setCompletedIntervals(0);
+      if (settings.autoStartNextWork) {
+        const duration = minutesToMs(settings.workMinutes);
+        setRemainingMs(duration);
+        deadlineRef.current = Date.now() + duration;
+        setRunId((id) => id + 1);
+        setStatus('running');
+        return;
+      }
       setStatus('break-complete');
       setRemainingMs(0);
       return;
     }
-
     const nextCount = completedRef.current + 1;
     setCompletedIntervals(nextCount);
     if (nextCount >= settings.intervalsBeforeBreak) {
@@ -253,3 +261,4 @@ export function App() {
     </main>
   );
 }
+

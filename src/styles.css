@@ -45,3 +45,24 @@ h2 { margin-top: 0; }
 }
 
 
+.settings-card select,
+.settings-card input[type="range"] {
+  width: 100%;
+  border: 1px solid #c8d2e8;
+  border-radius: .9rem;
+  padding: .75rem 1rem;
+  background: #fff;
+  color: #172033;
+}
+.settings-card input[type="range"] { padding-inline: 0; accent-color: #2457d6; }
+.sound-settings {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid #c8d2e8;
+  border-radius: 1.25rem;
+}
+.sound-settings legend { padding: 0 .5rem; color: #2457d6; font-weight: 900; }
+@media (prefers-color-scheme: dark) {
+  .settings-card select { background: #101524; color: #e9eefb; border-color: #3b4967; }
+  .sound-settings { border-color: #3b4967; }
+}

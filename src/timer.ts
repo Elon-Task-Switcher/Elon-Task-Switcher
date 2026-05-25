@@ -1,3 +1,12 @@
+import {
+  DEFAULT_SOUND_SETTINGS,
+  clampVolume,
+  isBreakTickSoundId,
+  isReminderSoundId,
+  type BreakTickSoundId,
+  type ReminderSoundId,
+} from './sound';
+
 export type TimerMode = 'work' | 'break';
 export type TimerStatus = 'idle' | 'running' | 'paused' | 'ended' | 'break-due' | 'break-running' | 'break-complete';
 
@@ -6,6 +15,10 @@ export type TimerSettings = {
   breakMinutes: number;
   intervalsBeforeBreak: number;
   autoStartNextWork: boolean;
+  reminderSoundId: ReminderSoundId;
+  breakTickSoundId: BreakTickSoundId;
+  reminderVolume: number;
+  breakTickVolume: number;
 };
 
 export type TimerSession = {
@@ -20,6 +33,7 @@ export const DEFAULT_SETTINGS: TimerSettings = {
   breakMinutes: 5,
   intervalsBeforeBreak: 12,
   autoStartNextWork: true,
+  ...DEFAULT_SOUND_SETTINGS,
 };
 
 export const SETTINGS_STORAGE_KEY = 'elon-task-switcher.settings.v1';
@@ -45,6 +59,10 @@ export function sanitizeSettings(settings: Partial<TimerSettings>): TimerSetting
     breakMinutes: sanitizePositiveNumber(settings.breakMinutes ?? DEFAULT_SETTINGS.breakMinutes, DEFAULT_SETTINGS.breakMinutes),
     intervalsBeforeBreak: sanitizePositiveInteger(settings.intervalsBeforeBreak ?? DEFAULT_SETTINGS.intervalsBeforeBreak, DEFAULT_SETTINGS.intervalsBeforeBreak),
     autoStartNextWork: Boolean(settings.autoStartNextWork ?? DEFAULT_SETTINGS.autoStartNextWork),
+    reminderSoundId: isReminderSoundId(settings.reminderSoundId) ? settings.reminderSoundId : DEFAULT_SETTINGS.reminderSoundId,
+    breakTickSoundId: isBreakTickSoundId(settings.breakTickSoundId) ? settings.breakTickSoundId : DEFAULT_SETTINGS.breakTickSoundId,
+    reminderVolume: clampVolume(settings.reminderVolume, DEFAULT_SETTINGS.reminderVolume),
+    breakTickVolume: clampVolume(settings.breakTickVolume, DEFAULT_SETTINGS.breakTickVolume),
   };
 }
 
@@ -118,3 +136,4 @@ export function formatTime(milliseconds: number): string {
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
+

@@ -39,6 +39,8 @@ describe('App', () => {
     expect(screen.getByLabelText(/Auto-start next task loop/i)).toBeChecked();
     expect(localStorage.getItem('elon-task-switcher.settings.v1')).toContain('7');
     expect(localStorage.getItem('elon-task-switcher.settings.v1')).toContain('autoStartNextWork');
+    expect(screen.getByLabelText(/Task switch sound/i)).toHaveValue('bell');
+    expect(screen.getByLabelText(/Break tick sound/i)).toHaveValue('classic-tick');
     unmount();
     render(<App />);
     expect(screen.getByLabelText('Time remaining')).toHaveTextContent('07:00');
@@ -46,6 +48,10 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Restore Defaults' }));
     expect(screen.getByLabelText('Time remaining')).toHaveTextContent('05:00');
     expect(screen.getByLabelText(/Auto-start next task loop/i)).toBeChecked();
+    await user.selectOptions(screen.getByLabelText(/Task switch sound/i), 'alarm');
+    await user.selectOptions(screen.getByLabelText(/Break tick sound/i), 'digital');
+    expect(localStorage.getItem('elon-task-switcher.settings.v1')).toContain('alarm');
+    expect(localStorage.getItem('elon-task-switcher.settings.v1')).toContain('digital');
   });
 
   it('persists session state across reloads', async () => {
@@ -58,3 +64,4 @@ describe('App', () => {
     expect(screen.getByText('Work running')).toBeInTheDocument();
   });
 });
+

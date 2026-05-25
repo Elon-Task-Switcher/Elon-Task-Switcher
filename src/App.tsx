@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { playReminderSound, startTickTock, stopTickTock } from './sound';
+import { BREAK_TICK_SOUND_PRESETS, REMINDER_SOUND_PRESETS, playReminderSound, startTickTock, stopTickTock } from './sound';
 import {
   DEFAULT_SETTINGS,
   defaultSession,
@@ -101,12 +101,12 @@ export function App() {
   useEffect(() => () => stopTickTock(), []);
 
   async function ring() {
-    const result = await playReminderSound();
+    const result = await playReminderSound(settings);
     setAudioMessage(result.ok ? '' : result.reason);
   }
 
   async function startBreakTickTock() {
-    const result = await startTickTock();
+    const result = await startTickTock(settings);
     if (!result.ok) setAudioMessage(result.reason);
   }
 
@@ -196,7 +196,7 @@ export function App() {
     continueNextWork();
   }
 
-  function updateSetting(key: keyof TimerSettings, value: number | boolean) {
+  function updateSetting(key: keyof TimerSettings, value: number | boolean | string) {
     const next = sanitizeSettings({ ...settings, [key]: value });
     setSettings(next);
     if (statusRef.current === 'idle') setRemainingMs(minutesToMs(next.workMinutes));
@@ -209,6 +209,13 @@ export function App() {
     setStatus(session.status);
     setRemainingMs(session.remainingMs);
     setCompletedIntervals(session.completedIntervals);
+  }
+
+  async function testBreakTick() {
+    stopTickTock();
+    const result = await startTickTock(settings);
+    setAudioMessage(result.ok ? '' : result.reason);
+    window.setTimeout(() => stopTickTock(), 2500);
   }
 
   const canStart = status === 'idle' || status === 'ended' || status === 'break-complete';
@@ -234,7 +241,8 @@ export function App() {
           <button type="button" onClick={reset} disabled={!canReset}>Reset</button>
           {status === 'ended' ? <button type="button" onClick={continueNextWork}>Next loop</button> : null}
           {status === 'break-complete' ? <button type="button" onClick={finishBreakCycle}>Resume work</button> : null}
-          <button type="button" className="secondary" onClick={() => void ring()}>Test Sound</button>
+          <button type="button" className="secondary" onClick={() => void ring()}>Test Reminder</button>
+          <button type="button" className="secondary" onClick={() => void testBreakTick()}>Test Break Tick</button>
         </div>
       </section>
 
@@ -256,6 +264,33 @@ export function App() {
           <input type="checkbox" checked={settings.autoStartNextWork} onChange={(event) => updateSetting('autoStartNextWork', event.target.checked)} />
           Auto-start next task loop
         </label>
+        <fieldset className="sound-settings">
+          <legend>Sound settings</legend>
+          <label>
+            Task switch sound
+            <select value={settings.reminderSoundId} onChange={(event) => updateSetting('reminderSoundId', event.target.value)}>
+              {REMINDER_SOUND_PRESETS.map((preset) => (
+                <option key={preset.id} value={preset.id}>{preset.label}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Task switch volume: {Math.round(settings.reminderVolume * 100)}%
+            <input type="range" min="0" max="1" step="0.05" value={settings.reminderVolume} onChange={(event) => updateSetting('reminderVolume', Number(event.target.value))} />
+          </label>
+          <label>
+            Break tick sound
+            <select value={settings.breakTickSoundId} onChange={(event) => updateSetting('breakTickSoundId', event.target.value)}>
+              {BREAK_TICK_SOUND_PRESETS.map((preset) => (
+                <option key={preset.id} value={preset.id}>{preset.label}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Break tick volume: {Math.round(settings.breakTickVolume * 100)}%
+            <input type="range" min="0" max="1" step="0.05" value={settings.breakTickVolume} onChange={(event) => updateSetting('breakTickVolume', Number(event.target.value))} />
+          </label>
+        </fieldset>
         <button type="button" className="secondary" onClick={restoreDefaults}>Restore Defaults</button>
       </section>
     </main>

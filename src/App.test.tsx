@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -61,6 +61,32 @@ describe('App', () => {
     expect(screen.getByText('Work running')).toBeInTheDocument();
     unmount();
     render(<App />);
+    expect(screen.getByText('Work running')).toBeInTheDocument();
+  });
+
+  it('shows a persistent visual switch alert when a work interval ends with auto-start enabled', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem('elon-task-switcher.settings.v1', JSON.stringify({
+      workMinutes: 0.05,
+      breakMinutes: 5,
+      intervalsBeforeBreak: 12,
+      autoStartNextWork: true,
+      reminderSoundId: 'silent',
+      breakTickSoundId: 'silent',
+      reminderVolume: 0.85,
+      breakTickVolume: 0.45,
+    }));
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    act(() => {
+      vi.advanceTimersByTime(3250);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/Timer fini/i)).toBeInTheDocument();
     expect(screen.getByText('Work running')).toBeInTheDocument();
   });
 });

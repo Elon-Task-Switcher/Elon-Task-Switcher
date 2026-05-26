@@ -30,6 +30,54 @@ h2 { margin-top: 0; }
 .countdown { margin: 0; font-size: clamp(5rem, 22vw, 11rem); font-weight: 950; line-height: .95; letter-spacing: -.08em; }
 .next-event { margin: 1.25rem auto 1rem; max-width: 32rem; color: #4a5875; font-size: 1.15rem; }
 .interval-count { margin: 0 auto 1.5rem; color: #667491; font-weight: 800; }
+.switch-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 auto 1.5rem;
+  max-width: 36rem;
+  padding: 1rem 1.1rem;
+  border: 3px solid #ffb000;
+  border-radius: 1.35rem;
+  color: #fff8dc;
+  background: linear-gradient(135deg, #d91f3f, #ff6b00);
+  box-shadow: 0 0 0 .45rem rgba(255, 176, 0, .2), 0 18px 42px rgba(217, 31, 63, .32);
+  text-align: left;
+  animation: switch-alert-pulse 1s ease-in-out infinite;
+}
+.switch-alert strong, .switch-alert span { display: block; }
+.switch-alert strong { font-size: clamp(1.15rem, 3vw, 1.55rem); text-transform: uppercase; }
+.switch-alert span { margin-top: .25rem; font-weight: 800; }
+.switch-alert-dismiss {
+  flex: 0 0 auto;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  border: 2px solid rgba(255,255,255,.72);
+  background: rgba(23,32,51,.28);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+[data-status="ended"] .countdown,
+[data-status="break-complete"] .countdown {
+  color: #d91f3f;
+  text-shadow: 0 0 26px rgba(255, 176, 0, .45);
+  animation: countdown-flash .9s ease-in-out infinite;
+}
+@keyframes switch-alert-pulse {
+  0%, 100% { transform: scale(1); filter: saturate(1); }
+  50% { transform: scale(1.025); filter: saturate(1.35); }
+}
+@keyframes countdown-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .58; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .switch-alert,
+  [data-status="ended"] .countdown,
+  [data-status="break-complete"] .countdown { animation: none; }
+}
 .audio-message { margin: 0 auto 1rem; padding: .75rem 1rem; max-width: 34rem; border-radius: 1rem; color: #5f1020; background: #ffd9df; }
 .primary-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; }
 .settings-card label { display: grid; gap: .35rem; margin: 0 0 1rem; font-weight: 800; }

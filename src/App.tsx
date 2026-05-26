@@ -52,6 +52,7 @@ export function App() {
   const [remainingMs, setRemainingMs] = useState(initialSession.remainingMs);
   const [completedIntervals, setCompletedIntervals] = useState(initialSession.completedIntervals);
   const [audioMessage, setAudioMessage] = useState('');
+  const [switchAlertVisible, setSwitchAlertVisible] = useState(false);
   const [runId, setRunId] = useState(0);
   const deadlineRef = useRef<number | null>(initialSession.deadline);
   const statusRef = useRef<TimerStatus>(initialSession.status);
@@ -112,6 +113,7 @@ export function App() {
 
   async function handleTimerComplete(currentStatus: TimerStatus) {
     await ring();
+    if (currentStatus === 'running') setSwitchAlertVisible(true);
     if (currentStatus === 'break-running') {
       stopTickTock();
       setCompletedIntervals(0);
@@ -148,6 +150,7 @@ export function App() {
   }
 
   function startWork() {
+    setSwitchAlertVisible(false);
     const nextRemaining = remainingRef.current > 0 ? remainingRef.current : minutesToMs(settings.workMinutes);
     deadlineRef.current = Date.now() + nextRemaining;
     setRemainingMs(nextRemaining);
@@ -164,6 +167,7 @@ export function App() {
   }
 
   function reset() {
+    setSwitchAlertVisible(false);
     stopTickTock();
     deadlineRef.current = null;
     setStatus('idle');
@@ -172,6 +176,7 @@ export function App() {
   }
 
   function continueNextWork() {
+    setSwitchAlertVisible(false);
     stopTickTock();
     deadlineRef.current = null;
     setStatus('idle');
@@ -221,6 +226,11 @@ export function App() {
   const canStart = status === 'idle' || status === 'ended' || status === 'break-complete';
   const canPause = status === 'running' || status === 'break-running';
   const canReset = status !== 'idle' || remainingMs !== modeDurationMs || completedIntervals !== 0;
+  const showSwitchAlert = switchAlertVisible;
+
+  function dismissSwitchAlert() {
+    setSwitchAlertVisible(false);
+  }
 
   return (
     <main className="app-shell" data-status={status}>
@@ -230,6 +240,15 @@ export function App() {
         <p className="mode-label" aria-live="polite">{statusLabel(status)}</p>
         <div className="countdown" aria-label="Time remaining">{formatTime(remainingMs)}</div>
         <p className="next-event">{nextEvent(status, settings.autoStartNextWork)}</p>
+        {showSwitchAlert ? (
+          <div className="switch-alert" role="alert" aria-live="assertive">
+            <div>
+              <strong>Timer fini — change de tâche maintenant</strong>
+              <span>Signal visuel actif pour les personnes en muet.</span>
+            </div>
+            <button type="button" className="switch-alert-dismiss" onClick={dismissSwitchAlert} aria-label="Masquer le signal visuel">×</button>
+          </div>
+        ) : null}
         <p className="interval-count">Completed intervals: {completedIntervals} / {settings.intervalsBeforeBreak}</p>
 
         {audioMessage ? <p role="alert" className="audio-message">{audioMessage}</p> : null}

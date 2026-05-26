@@ -72,6 +72,12 @@ export function App() {
   }, [settings]);
 
   useEffect(() => {
+    if (!switchAlertVisible) return;
+    const timeout = window.setTimeout(() => setSwitchAlertVisible(false), 10_000);
+    return () => window.clearTimeout(timeout);
+  }, [switchAlertVisible]);
+
+  useEffect(() => {
     if (status === 'idle') setRemainingMs(minutesToMs(settings.workMinutes));
     if (status === 'break-running') setRemainingMs((current) => Math.min(current, minutesToMs(settings.breakMinutes)));
   }, [settings, status]);
@@ -236,7 +242,7 @@ export function App() {
         <p className="mode-label" aria-live="polite">{statusLabel(status)}</p>
         <div className="countdown" aria-label="Time remaining">{formatTime(remainingMs)}</div>
         <p className="next-event">{nextEvent(status, settings.autoStartNextWork)}</p>
-        {showSwitchAlert ? <p className="switch-alert" role="alert" aria-live="assertive">Timer fini — change de tâche maintenant</p> : null}
+        {showSwitchAlert ? <p className="switch-alert" role="alert" aria-live="assertive">Timer fini - change de tache maintenant</p> : null}
         <p className="interval-count">Completed intervals: {completedIntervals} / {settings.intervalsBeforeBreak}</p>
 
         {audioMessage ? <p role="alert" className="audio-message">{audioMessage}</p> : null}
@@ -303,4 +309,5 @@ export function App() {
     </main>
   );
 }
+
 

@@ -64,7 +64,7 @@ describe('App', () => {
     expect(screen.getByText('Work running')).toBeInTheDocument();
   });
 
-  it('shows a persistent visual switch alert when a work interval ends with auto-start enabled', async () => {
+  it('shows a temporary visual switch alert when a work interval ends with auto-start enabled', async () => {
     vi.useFakeTimers();
     localStorage.setItem('elon-task-switcher.settings.v1', JSON.stringify({
       workMinutes: 0.05,
@@ -90,4 +90,5 @@ describe('App', () => {
     expect(screen.getByText('Work running')).toBeInTheDocument();
   });
 });
+
 

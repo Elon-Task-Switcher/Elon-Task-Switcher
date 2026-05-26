@@ -87,6 +87,36 @@ describe('App', () => {
     });
 
     expect(screen.getByText(/Timer fini/i)).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(10000);
+    });
+    expect(screen.queryByText(/Timer fini/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Work running')).toBeInTheDocument();
+  });
+
+  it('catches up an overdue timer when the window regains focus', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+    localStorage.setItem('elon-task-switcher.settings.v1', JSON.stringify({
+      workMinutes: 0.05,
+      breakMinutes: 5,
+      intervalsBeforeBreak: 12,
+      autoStartNextWork: true,
+      reminderSoundId: 'silent',
+      breakTickSoundId: 'silent',
+      reminderVolume: 0.85,
+      breakTickVolume: 0.45,
+    }));
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    vi.setSystemTime(new Date('2026-01-01T00:00:04Z'));
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/Timer fini/i)).toBeInTheDocument();
     expect(screen.getByText('Work running')).toBeInTheDocument();
   });
 });

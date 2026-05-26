@@ -45,6 +45,10 @@ function durationForStatus(settings: TimerSettings, status: TimerStatus): number
   return minutesToMs(status === 'break-running' ? settings.breakMinutes : settings.workMinutes);
 }
 
+function canUseNotifications(): boolean {
+  return 'Notification' in window;
+}
+
 export function App() {
   const [settings, setSettings] = useState<TimerSettings>(() => loadSettings());
   const initialSession = useMemo(() => loadSession(settings), []);
@@ -58,6 +62,7 @@ export function App() {
   const statusRef = useRef<TimerStatus>(initialSession.status);
   const remainingRef = useRef(initialSession.remainingMs);
   const completedRef = useRef(initialSession.completedIntervals);
+  const completingRef = useRef(false);
   const modeDurationMs = useMemo(() => durationForStatus(settings, status), [settings, status]);
 
   useEffect(() => {
@@ -83,6 +88,21 @@ export function App() {
   }, [settings, status]);
 
   useEffect(() => {
+    const reconcileDueTimer = () => {
+      if (document.hidden) return;
+      completeDueTimer();
+    };
+
+    document.addEventListener('visibilitychange', reconcileDueTimer);
+    window.addEventListener('focus', reconcileDueTimer);
+
+    return () => {
+      document.removeEventListener('visibilitychange', reconcileDueTimer);
+      window.removeEventListener('focus', reconcileDueTimer);
+    };
+  });
+
+  useEffect(() => {
     if (status === 'break-running') {
       void startBreakTickTock();
     } else {
@@ -95,10 +115,8 @@ export function App() {
     const interval = window.setInterval(() => {
       const nextRemaining = Math.max(0, (deadlineRef.current ?? Date.now()) - Date.now());
       setRemainingMs(nextRemaining);
-      if (nextRemaining <= 0) {
+      if (nextRemaining <= 0 && completeDueTimer()) {
         window.clearInterval(interval);
-        deadlineRef.current = null;
-        void handleTimerComplete(status);
       }
     }, 250);
 
@@ -112,12 +130,30 @@ export function App() {
     setAudioMessage(result.ok ? '' : result.reason);
   }
 
+  function requestNotificationPermission() {
+    if (canUseNotifications() && Notification.permission === 'default') {
+      void Notification.requestPermission();
+    }
+  }
+
+  function notifyTimerComplete(currentStatus: TimerStatus) {
+    if (!document.hidden || !canUseNotifications() || Notification.permission !== 'granted') return;
+    const title = currentStatus === 'break-running' ? 'Break complete' : 'Timer fini';
+    const body = currentStatus === 'break-running' ? 'Return to work.' : 'Change de tache maintenant.';
+    try {
+      new Notification(title, { body });
+    } catch {
+      // Notification support varies by browser and context; visual and audio cues still run.
+    }
+  }
+
   async function startBreakTickTock() {
     const result = await startTickTock(settings);
     if (!result.ok) setAudioMessage(result.reason);
   }
 
   async function handleTimerComplete(currentStatus: TimerStatus) {
+    notifyTimerComplete(currentStatus);
     await ring();
     if (currentStatus === 'running') setSwitchAlertVisible(true);
     if (currentStatus === 'break-running') {
@@ -155,7 +191,24 @@ export function App() {
     setStatus('ended');
   }
 
+  function completeDueTimer(): boolean {
+    if (completingRef.current) return false;
+    const currentStatus = statusRef.current;
+    if (currentStatus !== 'running' && currentStatus !== 'break-running') return false;
+    const deadline = deadlineRef.current;
+    if (!deadline || deadline > Date.now()) return false;
+
+    completingRef.current = true;
+    deadlineRef.current = null;
+    setRemainingMs(0);
+    void handleTimerComplete(currentStatus).finally(() => {
+      completingRef.current = false;
+    });
+    return true;
+  }
+
   function startWork() {
+    requestNotificationPermission();
     setSwitchAlertVisible(false);
     const nextRemaining = remainingRef.current > 0 ? remainingRef.current : minutesToMs(settings.workMinutes);
     deadlineRef.current = Date.now() + nextRemaining;

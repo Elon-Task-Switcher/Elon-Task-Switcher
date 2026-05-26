@@ -228,27 +228,15 @@ export function App() {
   const canReset = status !== 'idle' || remainingMs !== modeDurationMs || completedIntervals !== 0;
   const showSwitchAlert = switchAlertVisible;
 
-  function dismissSwitchAlert() {
-    setSwitchAlertVisible(false);
-  }
-
   return (
     <main className="app-shell" data-status={status}>
-      <section className="timer-card" aria-labelledby="app-title">
+      <section className={showSwitchAlert ? 'timer-card timer-card-alert' : 'timer-card'} aria-labelledby="app-title">
         <p className="eyebrow">Elon Task Switcher</p>
         <h1 id="app-title">Task switching timer</h1>
         <p className="mode-label" aria-live="polite">{statusLabel(status)}</p>
         <div className="countdown" aria-label="Time remaining">{formatTime(remainingMs)}</div>
         <p className="next-event">{nextEvent(status, settings.autoStartNextWork)}</p>
-        {showSwitchAlert ? (
-          <div className="switch-alert" role="alert" aria-live="assertive">
-            <div>
-              <strong>Timer fini — change de tâche maintenant</strong>
-              <span>Signal visuel actif pour les personnes en muet.</span>
-            </div>
-            <button type="button" className="switch-alert-dismiss" onClick={dismissSwitchAlert} aria-label="Masquer le signal visuel">×</button>
-          </div>
-        ) : null}
+        {showSwitchAlert ? <p className="switch-alert" role="alert" aria-live="assertive">Timer fini — change de tâche maintenant</p> : null}
         <p className="interval-count">Completed intervals: {completedIntervals} / {settings.intervalsBeforeBreak}</p>
 
         {audioMessage ? <p role="alert" className="audio-message">{audioMessage}</p> : null}

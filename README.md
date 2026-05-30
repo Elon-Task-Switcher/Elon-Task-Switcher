@@ -2,6 +2,11 @@
 
 Open-source browser timer for people who want to rotate tasks in short focused loops.
 
+Project links:
+
+- Live app: https://elon-task-switcher.github.io/Elon-Task-Switcher/
+- GitHub repository: https://github.com/Elon-Task-Switcher/Elon-Task-Switcher
+
 The default workflow is inspired by the widely repeated idea that Elon Musk's calendar has been described as divided into short five-minute blocks. The project treats that as inspiration, not as a verified biography claim: some sources repeat the five-minute time-blocking story, while others argue the claim is poorly sourced or mythologized.
 
 ## What it does

@@ -15,11 +15,12 @@ button {
 button.secondary { color: #2457d6; background: #e7edff; }
 button:disabled { color: #70809f; background: #d9e1f2; cursor: not-allowed; }
 .app-shell { display: grid; min-height: 100vh; gap: 1rem; place-items: center; padding: 1.5rem; }
-.timer-card, .settings-card {
+.timer-card, .settings-card, .project-card {
   width: min(100%, 44rem); padding: clamp(1.5rem, 5vw, 4rem); border-radius: 2rem;
   background: rgba(255,255,255,.92); box-shadow: 0 24px 80px rgba(22,35,67,.14); text-align: center;
 }
 .settings-card { padding: clamp(1.25rem, 3vw, 2rem); text-align: left; }
+.project-card { padding: clamp(1.25rem, 3vw, 2rem); }
 .eyebrow { margin: 0 0 .5rem; color: #2457d6; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
 h1 { margin: 0 0 1.5rem; font-size: clamp(1.8rem, 5vw, 3rem); }
 h2 { margin-top: 0; }
@@ -58,15 +59,36 @@ h2 { margin-top: 0; }
 }
 .audio-message { margin: 0 auto 1rem; padding: .75rem 1rem; max-width: 34rem; border-radius: 1rem; color: #5f1020; background: #ffd9df; }
 .primary-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; }
+.project-summary { margin: -.5rem auto 1.25rem; max-width: 36rem; color: #4a5875; }
+.git-links { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; }
+.git-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.9rem;
+  padding: .75rem 1.1rem;
+  border-radius: 999px;
+  color: #2457d6;
+  background: #e7edff;
+  font-weight: 900;
+  text-decoration: none;
+}
+.git-link:hover,
+.git-link:focus-visible { color: #fff; background: #2457d6; outline: none; }
 .settings-card label { display: grid; gap: .35rem; margin: 0 0 1rem; font-weight: 800; }
 .checkbox-label { display: flex !important; align-items: center; gap: .7rem; }
 .checkbox-label input { width: auto; }
 .settings-card input { width: 100%; border: 1px solid #c8d2e8; border-radius: .9rem; padding: .75rem 1rem; background: #fff; color: #172033; }
-@media (min-width: 860px) { .app-shell { grid-template-columns: minmax(0, 44rem) minmax(18rem, 24rem); align-items: center; } }
+@media (min-width: 860px) {
+  .app-shell { grid-template-columns: minmax(0, 44rem) minmax(18rem, 24rem); align-items: center; }
+  .project-card { grid-column: 1 / -1; width: min(100%, 69rem); }
+}
 @media (prefers-color-scheme: dark) {
   :root { color: #e9eefb; background: #101524; }
-  .timer-card, .settings-card { background: rgba(23,32,51,.92); }
-  .next-event, .interval-count { color: #b8c3dc; }
+  .timer-card, .settings-card, .project-card { background: rgba(23,32,51,.92); }
+  .next-event, .interval-count, .project-summary { color: #b8c3dc; }
+  .git-link { color: #dce7ff; background: #263553; }
+  .git-link:hover, .git-link:focus-visible { color: #101524; background: #8eb0ff; }
   .settings-card input { background: #101524; color: #e9eefb; border-color: #3b4967; }
 }
 

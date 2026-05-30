@@ -66,6 +66,13 @@ http://localhost:5173/
 npm test
 ```
 
+End-to-end browser tests:
+
+```powershell
+npx playwright install chromium
+npm run test:e2e
+```
+
 ## Build
 
 ```powershell

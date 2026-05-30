@@ -1,0 +1,4 @@
+﻿User-agent: *
+Allow: /
+
+Sitemap: https://elon-task-switcher.github.io/Elon-Task-Switcher/sitemap.xml

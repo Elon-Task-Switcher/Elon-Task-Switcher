@@ -15,6 +15,9 @@ describe('App', () => {
     expect(screen.getByText('Work')).toBeInTheDocument();
     expect(screen.getByLabelText('Time remaining')).toHaveTextContent('05:00');
     expect(screen.getByText(/Switch task when the timer ends/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Source code' })).toHaveAttribute('href', 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher');
+    expect(screen.getByRole('link', { name: 'Report an issue' })).toHaveAttribute('href', 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher/issues');
+    expect(screen.getByRole('link', { name: 'MIT license' })).toHaveAttribute('href', 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher/blob/main/LICENSE');
   });
 
   it('starts, pauses, resumes, and resets the timer', async () => {

@@ -14,6 +14,21 @@ import {
   type TimerStatus,
 } from './timer';
 
+const GIT_LINKS = [
+  {
+    label: 'Source code',
+    href: 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher',
+  },
+  {
+    label: 'Report an issue',
+    href: 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher/issues',
+  },
+  {
+    label: 'MIT license',
+    href: 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher/blob/main/LICENSE',
+  },
+] as const;
+
 function statusLabel(status: TimerStatus): string {
   const labels: Record<TimerStatus, string> = {
     idle: 'Work',
@@ -358,6 +373,21 @@ export function App() {
           </label>
         </fieldset>
         <button type="button" className="secondary" onClick={restoreDefaults}>Restore Defaults</button>
+      </section>
+
+      <section className="project-card" aria-labelledby="project-links-title">
+        <p className="eyebrow">Open source</p>
+        <h2 id="project-links-title">GitHub project links</h2>
+        <p className="project-summary">
+          Follow the code, report bugs, or check the license directly from the timer interface.
+        </p>
+        <div className="git-links" aria-label="GitHub links">
+          {GIT_LINKS.map((link) => (
+            <a key={link.href} className="git-link" href={link.href} target="_blank" rel="noreferrer">
+              {link.label}
+            </a>
+          ))}
+        </div>
       </section>
     </main>
   );

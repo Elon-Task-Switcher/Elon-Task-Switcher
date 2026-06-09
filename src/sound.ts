@@ -62,6 +62,8 @@ export const BREAK_TICK_SOUND_PRESETS: TickPreset[] = [
 let tickTockInterval: number | null = null;
 let tickTockContext: AudioContext | null = null;
 let tickTockStep = 0;
+let sharedAudioContext: AudioContext | null = null;
+let sharedAudioContextCtor: typeof AudioContext | null = null;
 
 export function isReminderSoundId(value: unknown): value is ReminderSoundId {
   return REMINDER_SOUND_PRESETS.some((preset) => preset.id === value);
@@ -84,12 +86,16 @@ function getTickPreset(id: BreakTickSoundId): TickPreset {
   return BREAK_TICK_SOUND_PRESETS.find((preset) => preset.id === id) ?? BREAK_TICK_SOUND_PRESETS[0];
 }
 
-async function getAudioContext(): Promise<AudioContext | null> {
+async function getSharedAudioContext(): Promise<AudioContext | null> {
   const AudioContextCtor = window.AudioContext ?? window.webkitAudioContext;
   if (!AudioContextCtor) return null;
-  const context = new AudioContextCtor();
-  if (context.state === 'suspended') await context.resume();
-  return context;
+  if (!sharedAudioContext || sharedAudioContext.state === 'closed' || sharedAudioContextCtor !== AudioContextCtor) {
+    if (sharedAudioContext && sharedAudioContext.state !== 'closed') void sharedAudioContext.close();
+    sharedAudioContext = new AudioContextCtor();
+    sharedAudioContextCtor = AudioContextCtor;
+  }
+  if (sharedAudioContext.state === 'suspended') await sharedAudioContext.resume();
+  return sharedAudioContext;
 }
 
 function playTone(context: AudioContext, step: ToneStep, volume: number): void {
@@ -114,20 +120,28 @@ function playSteps(context: AudioContext, steps: ToneStep[], volume: number): vo
   steps.forEach((step) => playTone(context, step, volume));
 }
 
-function presetLengthSeconds(steps: ToneStep[]): number {
-  return steps.reduce((max, step) => Math.max(max, step.at + step.duration), 0);
-}
-
 export async function playReminderSound(settings: SoundSettings = DEFAULT_SOUND_SETTINGS): Promise<SoundResult> {
   try {
     const preset = getReminderPreset(settings.reminderSoundId);
     if (preset.steps.length === 0 || settings.reminderVolume <= 0) return { ok: true };
 
-    const context = await getAudioContext();
+    const context = await getSharedAudioContext();
     if (!context) return { ok: false, reason: 'Audio is not supported in this browser.' };
 
     playSteps(context, preset.steps, settings.reminderVolume);
-    window.setTimeout(() => void context.close(), (presetLengthSeconds(preset.steps) + 0.2) * 1000);
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      reason: 'Sound was blocked. Click Test Sound or interact with the page before starting a session.',
+    };
+  }
+}
+
+export async function unlockAudio(): Promise<SoundResult> {
+  try {
+    const context = await getSharedAudioContext();
+    if (!context) return { ok: false, reason: 'Audio is not supported in this browser.' };
     return { ok: true };
   } catch {
     return {
@@ -143,7 +157,7 @@ export async function startTickTock(settings: SoundSettings = DEFAULT_SOUND_SETT
     const preset = getTickPreset(settings.breakTickSoundId);
     if (preset.steps.length === 0 || settings.breakTickVolume <= 0) return { ok: true };
 
-    const context = await getAudioContext();
+    const context = await getSharedAudioContext();
     if (!context) return { ok: false, reason: 'Audio is not supported in this browser.' };
 
     tickTockContext = context;
@@ -171,7 +185,6 @@ export function stopTickTock(): void {
     tickTockInterval = null;
   }
   if (tickTockContext) {
-    void tickTockContext.close();
     tickTockContext = null;
   }
 }

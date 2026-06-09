@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BREAK_TICK_SOUND_PRESETS, REMINDER_SOUND_PRESETS, playReminderSound, startTickTock, stopTickTock } from './sound';
+import { BREAK_TICK_SOUND_PRESETS, REMINDER_SOUND_PRESETS, playReminderSound, startTickTock, stopTickTock, unlockAudio } from './sound';
 import {
   DEFAULT_SETTINGS,
   defaultSession,
@@ -13,6 +13,7 @@ import {
   type TimerSettings,
   type TimerStatus,
 } from './timer';
+import { APP_VERSION } from './version';
 
 const GIT_LINKS = [
   {
@@ -145,6 +146,11 @@ export function App() {
     setAudioMessage(result.ok ? '' : result.reason);
   }
 
+  async function prepareAudio() {
+    const result = await unlockAudio();
+    if (!result.ok) setAudioMessage(result.reason);
+  }
+
   function requestNotificationPermission() {
     if (canUseNotifications() && Notification.permission === 'default') {
       void Notification.requestPermission();
@@ -226,6 +232,7 @@ export function App() {
 
   function startWork() {
     requestNotificationPermission();
+    void prepareAudio();
     setSwitchAlertVisible(false);
     const nextRemaining = remainingRef.current > 0 ? remainingRef.current : minutesToMs(settings.workMinutes);
     deadlineRef.current = Date.now() + nextRemaining;
@@ -295,6 +302,7 @@ export function App() {
 
   async function testBreakTick() {
     stopTickTock();
+    void prepareAudio();
     const result = await startTickTock(settings);
     setAudioMessage(result.ok ? '' : result.reason);
     window.setTimeout(() => stopTickTock(), 2500);
@@ -384,6 +392,7 @@ export function App() {
         <p className="project-summary">
           Follow the code, report bugs, or check the license directly from the timer interface.
         </p>
+        <p className="app-version" aria-label="App version">Version {APP_VERSION}</p>
         <div className="git-links" aria-label="GitHub links">
           {GIT_LINKS.map((link) => (
             <a key={link.href} className="git-link" href={link.href} target="_blank" rel="noreferrer">

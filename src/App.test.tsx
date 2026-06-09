@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import packageJson from '../package.json';
 import { App } from './App';
 import { SESSION_STORAGE_KEY, SETTINGS_STORAGE_KEY } from './timer';
 
@@ -21,6 +22,7 @@ describe('App', () => {
     expect(screen.getByText('Work')).toBeInTheDocument();
     expect(screen.getByLabelText('Time remaining')).toHaveTextContent('05:00');
     expect(screen.getByText(/Switch task when the timer ends/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('App version')).toHaveTextContent(`Version ${packageJson.version}`);
     expect(screen.getByRole('link', { name: 'Source code' })).toHaveAttribute('href', 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher');
     expect(screen.getByRole('link', { name: 'Report an issue' })).toHaveAttribute('href', 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher/issues');
     expect(screen.getByRole('link', { name: 'MIT license' })).toHaveAttribute('href', 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher/blob/main/LICENSE');
@@ -170,6 +172,79 @@ describe('App', () => {
     expect(screen.getByText('Work running')).toBeInTheDocument();
     expect(screen.getByText('Completed intervals: 1 / 12')).toBeInTheDocument();
     expect(screen.getByLabelText('Time remaining')).not.toHaveTextContent('00:00');
+  });
+
+  it('unlocks audio on start and reuses the same AudioContext for the timer reminder', async () => {
+    vi.useFakeTimers();
+    let createdContexts = 0;
+    const resumeAudio = vi.fn();
+
+    class ReusableAudioContext {
+      state: AudioContextState = 'suspended';
+      currentTime = 0;
+      destination = {};
+
+      constructor() {
+        createdContexts += 1;
+      }
+
+      resume = vi.fn(async () => {
+        this.state = 'running';
+        resumeAudio();
+      });
+
+      close = vi.fn(async () => {
+        this.state = 'closed';
+      });
+
+      createOscillator = vi.fn(() => ({
+        type: 'sine',
+        frequency: { setValueAtTime: vi.fn() },
+        connect: vi.fn(),
+        start: vi.fn(),
+        stop: vi.fn(),
+      }));
+
+      createGain = vi.fn(() => ({
+        gain: {
+          setValueAtTime: vi.fn(),
+          exponentialRampToValueAtTime: vi.fn(),
+        },
+        connect: vi.fn(),
+      }));
+    }
+
+    vi.stubGlobal('AudioContext', ReusableAudioContext);
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
+      workMinutes: 0.05,
+      breakMinutes: 5,
+      intervalsBeforeBreak: 12,
+      autoStartNextWork: true,
+      reminderSoundId: 'bell',
+      breakTickSoundId: 'silent',
+      reminderVolume: 0.85,
+      breakTickVolume: 0.45,
+    }));
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(createdContexts).toBe(1);
+    expect(resumeAudio).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      vi.advanceTimersByTime(3250);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/Timer fini/i)).toBeInTheDocument();
+    expect(screen.getByText('Work running')).toBeInTheDocument();
+    expect(createdContexts).toBe(1);
   });
 });
 

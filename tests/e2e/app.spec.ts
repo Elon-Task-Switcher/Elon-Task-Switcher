@@ -1,4 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+const packageJson = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8')) as { version: string };
 
 const SETTINGS_KEY = 'elon-task-switcher.settings.v1';
 
@@ -51,6 +54,7 @@ test.describe('Elon Task Switcher end-to-end', () => {
     await expect(page.getByLabel(/Task switch volume/)).toHaveValue('0.85');
     await expect(page.getByLabel(/Break tick volume/)).toHaveValue('0.45');
     await expect(page.getByRole('heading', { name: 'GitHub project links' })).toBeVisible();
+    await expect(page.getByLabel('App version')).toHaveText(`Version ${packageJson.version}`);
     await expect(page.getByRole('link', { name: 'Source code' })).toHaveAttribute('href', 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher');
     await expect(page.getByRole('link', { name: 'Report an issue' })).toHaveAttribute('href', 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher/issues');
     await expect(page.getByRole('link', { name: 'MIT license' })).toHaveAttribute('href', 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher/blob/main/LICENSE');

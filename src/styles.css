@@ -60,6 +60,7 @@ h2 { margin-top: 0; }
 .audio-message { margin: 0 auto 1rem; padding: .75rem 1rem; max-width: 34rem; border-radius: 1rem; color: #5f1020; background: #ffd9df; }
 .primary-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; }
 .project-summary { margin: -.5rem auto 1.25rem; max-width: 36rem; color: #4a5875; }
+.app-version { margin: 0 auto 1.25rem; color: #667491; font-size: .95rem; font-weight: 800; }
 .git-links { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; }
 .git-link {
   display: inline-flex;
@@ -86,7 +87,7 @@ h2 { margin-top: 0; }
 @media (prefers-color-scheme: dark) {
   :root { color: #e9eefb; background: #101524; }
   .timer-card, .settings-card, .project-card { background: rgba(23,32,51,.92); }
-  .next-event, .interval-count, .project-summary { color: #b8c3dc; }
+  .next-event, .interval-count, .project-summary, .app-version { color: #b8c3dc; }
   .git-link { color: #dce7ff; background: #263553; }
   .git-link:hover, .git-link:focus-visible { color: #101524; background: #8eb0ff; }
   .settings-card input { background: #101524; color: #e9eefb; border-color: #3b4967; }

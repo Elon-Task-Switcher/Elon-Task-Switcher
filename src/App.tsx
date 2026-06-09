@@ -167,9 +167,9 @@ export function App() {
     if (!result.ok) setAudioMessage(result.reason);
   }
 
-  async function handleTimerComplete(currentStatus: TimerStatus) {
+  function handleTimerComplete(currentStatus: TimerStatus) {
     notifyTimerComplete(currentStatus);
-    await ring();
+    void ring();
     if (currentStatus === 'running') setSwitchAlertVisible(true);
     if (currentStatus === 'break-running') {
       stopTickTock();
@@ -216,9 +216,11 @@ export function App() {
     completingRef.current = true;
     deadlineRef.current = null;
     setRemainingMs(0);
-    void handleTimerComplete(currentStatus).finally(() => {
+    try {
+      handleTimerComplete(currentStatus);
+    } finally {
       completingRef.current = false;
-    });
+    }
     return true;
   }
 
@@ -241,6 +243,7 @@ export function App() {
   }
 
   function reset() {
+    completingRef.current = false;
     setSwitchAlertVisible(false);
     stopTickTock();
     deadlineRef.current = null;

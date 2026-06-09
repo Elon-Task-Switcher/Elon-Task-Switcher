@@ -1,11 +1,17 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { SESSION_STORAGE_KEY, SETTINGS_STORAGE_KEY } from './timer';
 
 describe('App', () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.useRealTimers();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -121,6 +127,49 @@ describe('App', () => {
 
     expect(screen.getByText(/Timer fini/i)).toBeInTheDocument();
     expect(screen.getByText('Work running')).toBeInTheDocument();
+  });
+
+  it('recovers a persisted 00:00 running timer even when browser audio is blocked', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-02T00:00:00Z'));
+
+    class HangingAudioContext {
+      state = 'suspended';
+      currentTime = 0;
+      resume = () => new Promise<void>(() => {});
+      close = () => Promise.resolve();
+    }
+
+    vi.stubGlobal('AudioContext', HangingAudioContext);
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
+      workMinutes: 0.05,
+      breakMinutes: 5,
+      intervalsBeforeBreak: 12,
+      autoStartNextWork: true,
+      reminderSoundId: 'bell',
+      breakTickSoundId: 'silent',
+      reminderVolume: 0.85,
+      breakTickVolume: 0.45,
+    }));
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
+      status: 'running',
+      remainingMs: 0,
+      completedIntervals: 0,
+      deadline: null,
+    }));
+
+    render(<App />);
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/Timer fini/i)).toBeInTheDocument();
+    expect(screen.getByText('Work running')).toBeInTheDocument();
+    expect(screen.getByText('Completed intervals: 1 / 12')).toBeInTheDocument();
+    expect(screen.getByLabelText('Time remaining')).not.toHaveTextContent('00:00');
   });
 });
 

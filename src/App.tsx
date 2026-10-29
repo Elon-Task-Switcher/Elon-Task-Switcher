@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BREAK_TICK_SOUND_PRESETS, REMINDER_SOUND_PRESETS, playReminderSound, startTickTock, stopTickTock, unlockAudio } from './sound';
+import { SettingsPanel } from './SettingsPanel';
+import { playReminderSound, startBreakTickSound, stopBreakTickSound, unlockAudio } from './sound';
 import {
   DEFAULT_SETTINGS,
-  defaultSession,
-  formatTime,
+  convertMinutesToMilliseconds,
+  createDefaultSession,
+  formatRemainingTime,
   loadSession,
   loadSettings,
-  minutesToMs,
   saveSession,
   saveSettings,
   sanitizeSettings,
@@ -15,7 +16,7 @@ import {
 } from './timer';
 import { APP_VERSION } from './version';
 
-const GIT_LINKS = [
+const PROJECT_LINKS = [
   {
     label: 'Source code',
     href: 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher',
@@ -30,7 +31,7 @@ const GIT_LINKS = [
   },
 ] as const;
 
-function statusLabel(status: TimerStatus): string {
+function describeTimerStatus(status: TimerStatus): string {
   const labels: Record<TimerStatus, string> = {
     idle: 'Work',
     running: 'Work running',
@@ -43,8 +44,10 @@ function statusLabel(status: TimerStatus): string {
   return labels[status];
 }
 
-function nextEvent(status: TimerStatus, autoStartNextWork: boolean): string {
-  if (status === 'running' && autoStartNextWork) return 'Next task loop starts automatically when this one ends.';
+function describeNextTimerEvent(status: TimerStatus, autoStartNextWork: boolean): string {
+  if (status === 'running' && autoStartNextWork) {
+    return 'Next task loop starts automatically when this one ends.';
+  }
   const labels: Record<TimerStatus, string> = {
     idle: 'Switch task when the timer ends.',
     running: 'Switch task when the timer ends.',
@@ -57,11 +60,11 @@ function nextEvent(status: TimerStatus, autoStartNextWork: boolean): string {
   return labels[status];
 }
 
-function durationForStatus(settings: TimerSettings, status: TimerStatus): number {
-  return minutesToMs(status === 'break-running' ? settings.breakMinutes : settings.workMinutes);
+function calculateTimerDuration(settings: TimerSettings, status: TimerStatus): number {
+  return convertMinutesToMilliseconds(status === 'break-running' ? settings.breakMinutes : settings.workMinutes);
 }
 
-function canUseNotifications(): boolean {
+function browserSupportsNotifications(): boolean {
   return 'Notification' in window;
 }
 
@@ -73,19 +76,19 @@ export function App() {
   const [completedIntervals, setCompletedIntervals] = useState(initialSession.completedIntervals);
   const [audioMessage, setAudioMessage] = useState('');
   const [switchAlertVisible, setSwitchAlertVisible] = useState(false);
-  const [runId, setRunId] = useState(0);
-  const deadlineRef = useRef<number | null>(initialSession.deadline);
-  const statusRef = useRef<TimerStatus>(initialSession.status);
-  const remainingRef = useRef(initialSession.remainingMs);
-  const completedRef = useRef(initialSession.completedIntervals);
-  const completingRef = useRef(false);
-  const modeDurationMs = useMemo(() => durationForStatus(settings, status), [settings, status]);
+  const [timerRunId, setTimerRunId] = useState(0);
+  const deadlineMsRef = useRef<number | null>(initialSession.deadline);
+  const timerStatusRef = useRef<TimerStatus>(initialSession.status);
+  const remainingMsRef = useRef(initialSession.remainingMs);
+  const completedIntervalsRef = useRef(initialSession.completedIntervals);
+  const isCompletingTimerRef = useRef(false);
+  const timerDurationMs = useMemo(() => calculateTimerDuration(settings, status), [settings, status]);
 
   useEffect(() => {
-    statusRef.current = status;
-    remainingRef.current = remainingMs;
-    completedRef.current = completedIntervals;
-    saveSession({ status, remainingMs, completedIntervals, deadline: deadlineRef.current });
+    timerStatusRef.current = status;
+    remainingMsRef.current = remainingMs;
+    completedIntervalsRef.current = completedIntervals;
+    saveSession({ status, remainingMs, completedIntervals, deadline: deadlineMsRef.current });
   }, [status, remainingMs, completedIntervals]);
 
   useEffect(() => {
@@ -94,71 +97,77 @@ export function App() {
 
   useEffect(() => {
     if (!switchAlertVisible) return;
-    const timeout = window.setTimeout(() => setSwitchAlertVisible(false), 10_000);
-    return () => window.clearTimeout(timeout);
+    const switchAlertTimeoutId = window.setTimeout(() => setSwitchAlertVisible(false), 10_000);
+    return () => window.clearTimeout(switchAlertTimeoutId);
   }, [switchAlertVisible]);
 
   useEffect(() => {
-    if (status === 'idle') setRemainingMs(minutesToMs(settings.workMinutes));
-    if (status === 'break-running') setRemainingMs((current) => Math.min(current, minutesToMs(settings.breakMinutes)));
+    if (status === 'idle') {
+      setRemainingMs(convertMinutesToMilliseconds(settings.workMinutes));
+    }
+    if (status === 'break-running') {
+      setRemainingMs((currentRemainingMs) => (
+        Math.min(currentRemainingMs, convertMinutesToMilliseconds(settings.breakMinutes))
+      ));
+    }
   }, [settings, status]);
 
   useEffect(() => {
-    const reconcileDueTimer = () => {
+    const completeVisibleTimerIfDue = () => {
       if (document.hidden) return;
-      completeDueTimer();
+      completeTimerIfDue();
     };
 
-    document.addEventListener('visibilitychange', reconcileDueTimer);
-    window.addEventListener('focus', reconcileDueTimer);
+    document.addEventListener('visibilitychange', completeVisibleTimerIfDue);
+    window.addEventListener('focus', completeVisibleTimerIfDue);
 
     return () => {
-      document.removeEventListener('visibilitychange', reconcileDueTimer);
-      window.removeEventListener('focus', reconcileDueTimer);
+      document.removeEventListener('visibilitychange', completeVisibleTimerIfDue);
+      window.removeEventListener('focus', completeVisibleTimerIfDue);
     };
   });
 
   useEffect(() => {
     if (status === 'break-running') {
-      void startBreakTickTock();
+      void playBreakTicksAndReportFailure();
     } else {
-      stopTickTock();
+      stopBreakTickSound();
     }
 
     if (status !== 'running' && status !== 'break-running') return;
-    if (!deadlineRef.current) deadlineRef.current = Date.now() + remainingMs;
+    if (!deadlineMsRef.current) deadlineMsRef.current = Date.now() + remainingMs;
 
-    const interval = window.setInterval(() => {
-      const nextRemaining = Math.max(0, (deadlineRef.current ?? Date.now()) - Date.now());
-      setRemainingMs(nextRemaining);
-      if (nextRemaining <= 0 && completeDueTimer()) {
-        window.clearInterval(interval);
+    const countdownIntervalId = window.setInterval(() => {
+      const nextRemainingMs = Math.max(0, (deadlineMsRef.current ?? Date.now()) - Date.now());
+      setRemainingMs(nextRemainingMs);
+      if (nextRemainingMs <= 0 && completeTimerIfDue()) {
+        window.clearInterval(countdownIntervalId);
       }
     }, 250);
 
-    return () => window.clearInterval(interval);
-  }, [status, runId]);
+    return () => window.clearInterval(countdownIntervalId);
+  }, [status, timerRunId]);
 
-  useEffect(() => () => stopTickTock(), []);
+  useEffect(() => () => stopBreakTickSound(), []);
 
-  async function ring() {
+  async function playReminderAndReportFailure() {
     const result = await playReminderSound(settings);
     setAudioMessage(result.ok ? '' : result.reason);
   }
 
-  async function prepareAudio() {
+  async function unlockAudioForSession() {
     const result = await unlockAudio();
     if (!result.ok) setAudioMessage(result.reason);
   }
 
   function requestNotificationPermission() {
-    if (canUseNotifications() && Notification.permission === 'default') {
+    if (browserSupportsNotifications() && Notification.permission === 'default') {
       void Notification.requestPermission();
     }
   }
 
-  function notifyTimerComplete(currentStatus: TimerStatus) {
-    if (!document.hidden || !canUseNotifications() || Notification.permission !== 'granted') return;
+  function notifyTimerCompletion(currentStatus: TimerStatus) {
+    if (!document.hidden || !browserSupportsNotifications() || Notification.permission !== 'granted') return;
     const title = currentStatus === 'break-running' ? 'Break complete' : 'Timer fini';
     const body = currentStatus === 'break-running' ? 'Return to work.' : 'Change de tache maintenant.';
     try {
@@ -168,43 +177,43 @@ export function App() {
     }
   }
 
-  async function startBreakTickTock() {
-    const result = await startTickTock(settings);
+  async function playBreakTicksAndReportFailure() {
+    const result = await startBreakTickSound(settings);
     if (!result.ok) setAudioMessage(result.reason);
   }
 
-  function handleTimerComplete(currentStatus: TimerStatus) {
-    notifyTimerComplete(currentStatus);
-    void ring();
+  function startNewWorkInterval() {
+    const workDurationMs = convertMinutesToMilliseconds(settings.workMinutes);
+    setRemainingMs(workDurationMs);
+    deadlineMsRef.current = Date.now() + workDurationMs;
+    setTimerRunId((currentRunId) => currentRunId + 1);
+    setStatus('running');
+  }
+
+  function handleTimerCompletion(currentStatus: TimerStatus) {
+    notifyTimerCompletion(currentStatus);
+    void playReminderAndReportFailure();
     if (currentStatus === 'running') setSwitchAlertVisible(true);
     if (currentStatus === 'break-running') {
-      stopTickTock();
+      stopBreakTickSound();
       setCompletedIntervals(0);
       if (settings.autoStartNextWork) {
-        const duration = minutesToMs(settings.workMinutes);
-        setRemainingMs(duration);
-        deadlineRef.current = Date.now() + duration;
-        setRunId((id) => id + 1);
-        setStatus('running');
+        startNewWorkInterval();
         return;
       }
       setStatus('break-complete');
       setRemainingMs(0);
       return;
     }
-    const nextCount = completedRef.current + 1;
-    setCompletedIntervals(nextCount);
-    if (nextCount >= settings.intervalsBeforeBreak) {
+    const completedWorkIntervals = completedIntervalsRef.current + 1;
+    setCompletedIntervals(completedWorkIntervals);
+    if (completedWorkIntervals >= settings.intervalsBeforeBreak) {
       startBreak();
       return;
     }
 
     if (settings.autoStartNextWork) {
-      const duration = minutesToMs(settings.workMinutes);
-      setRemainingMs(duration);
-      deadlineRef.current = Date.now() + duration;
-      setRunId((id) => id + 1);
-      setStatus('running');
+      startNewWorkInterval();
       return;
     }
 
@@ -212,179 +221,152 @@ export function App() {
     setStatus('ended');
   }
 
-  function completeDueTimer(): boolean {
-    if (completingRef.current) return false;
-    const currentStatus = statusRef.current;
+  function completeTimerIfDue(): boolean {
+    if (isCompletingTimerRef.current) return false;
+    const currentStatus = timerStatusRef.current;
     if (currentStatus !== 'running' && currentStatus !== 'break-running') return false;
-    const deadline = deadlineRef.current;
+    const deadline = deadlineMsRef.current;
     if (!deadline || deadline > Date.now()) return false;
 
-    completingRef.current = true;
-    deadlineRef.current = null;
+    isCompletingTimerRef.current = true;
+    deadlineMsRef.current = null;
     setRemainingMs(0);
     try {
-      handleTimerComplete(currentStatus);
+      handleTimerCompletion(currentStatus);
     } finally {
-      completingRef.current = false;
+      isCompletingTimerRef.current = false;
     }
     return true;
   }
 
-  function startWork() {
+  function startOrResumeWork() {
     requestNotificationPermission();
-    void prepareAudio();
+    void unlockAudioForSession();
     setSwitchAlertVisible(false);
-    const nextRemaining = remainingRef.current > 0 ? remainingRef.current : minutesToMs(settings.workMinutes);
-    deadlineRef.current = Date.now() + nextRemaining;
-    setRemainingMs(nextRemaining);
-    setRunId((id) => id + 1);
+    const nextRemainingMs = remainingMsRef.current > 0
+      ? remainingMsRef.current
+      : convertMinutesToMilliseconds(settings.workMinutes);
+    deadlineMsRef.current = Date.now() + nextRemainingMs;
+    setRemainingMs(nextRemainingMs);
+    setTimerRunId((currentRunId) => currentRunId + 1);
     setStatus('running');
   }
 
-  function pause() {
+  function pauseTimer() {
     if (status !== 'running' && status !== 'break-running') return;
-    if (deadlineRef.current) setRemainingMs(Math.max(0, deadlineRef.current - Date.now()));
-    stopTickTock();
-    deadlineRef.current = null;
+    if (deadlineMsRef.current) {
+      setRemainingMs(Math.max(0, deadlineMsRef.current - Date.now()));
+    }
+    stopBreakTickSound();
+    deadlineMsRef.current = null;
     setStatus('paused');
   }
 
-  function reset() {
-    completingRef.current = false;
+  function resetTimer() {
+    isCompletingTimerRef.current = false;
     setSwitchAlertVisible(false);
-    stopTickTock();
-    deadlineRef.current = null;
+    stopBreakTickSound();
+    deadlineMsRef.current = null;
     setStatus('idle');
-    setRemainingMs(minutesToMs(settings.workMinutes));
+    setRemainingMs(convertMinutesToMilliseconds(settings.workMinutes));
     setCompletedIntervals(0);
   }
 
-  function continueNextWork() {
+  function prepareNextWorkInterval() {
     setSwitchAlertVisible(false);
-    stopTickTock();
-    deadlineRef.current = null;
+    stopBreakTickSound();
+    deadlineMsRef.current = null;
     setStatus('idle');
-    setRemainingMs(minutesToMs(settings.workMinutes));
+    setRemainingMs(convertMinutesToMilliseconds(settings.workMinutes));
   }
 
   function startBreak() {
-    const duration = minutesToMs(settings.breakMinutes);
-    setRemainingMs(duration);
-    deadlineRef.current = Date.now() + duration;
-    setRunId((id) => id + 1);
+    const breakDurationMs = convertMinutesToMilliseconds(settings.breakMinutes);
+    setRemainingMs(breakDurationMs);
+    deadlineMsRef.current = Date.now() + breakDurationMs;
+    setTimerRunId((currentRunId) => currentRunId + 1);
     setStatus('break-running');
   }
 
-  function finishBreakCycle() {
+  function resumeWorkAfterBreak() {
     setCompletedIntervals(0);
-    continueNextWork();
+    prepareNextWorkInterval();
   }
 
-  function skipBreak() {
-    setCompletedIntervals(0);
-    continueNextWork();
+  function updateSetting(settingName: keyof TimerSettings, value: number | boolean | string) {
+    const nextSettings = sanitizeSettings({ ...settings, [settingName]: value });
+    setSettings(nextSettings);
+    if (timerStatusRef.current === 'idle') {
+      setRemainingMs(convertMinutesToMilliseconds(nextSettings.workMinutes));
+    }
   }
 
-  function updateSetting(key: keyof TimerSettings, value: number | boolean | string) {
-    const next = sanitizeSettings({ ...settings, [key]: value });
-    setSettings(next);
-    if (statusRef.current === 'idle') setRemainingMs(minutesToMs(next.workMinutes));
-  }
-
-  function restoreDefaults() {
-    const session = defaultSession(DEFAULT_SETTINGS);
+  function restoreDefaultSettings() {
+    const session = createDefaultSession(DEFAULT_SETTINGS);
     setSettings(DEFAULT_SETTINGS);
-    deadlineRef.current = session.deadline;
+    deadlineMsRef.current = session.deadline;
     setStatus(session.status);
     setRemainingMs(session.remainingMs);
     setCompletedIntervals(session.completedIntervals);
   }
 
-  async function testBreakTick() {
-    stopTickTock();
-    void prepareAudio();
-    const result = await startTickTock(settings);
+  async function previewBreakTickSound() {
+    stopBreakTickSound();
+    void unlockAudioForSession();
+    const result = await startBreakTickSound(settings);
     setAudioMessage(result.ok ? '' : result.reason);
-    window.setTimeout(() => stopTickTock(), 2500);
+    window.setTimeout(() => stopBreakTickSound(), 2500);
   }
 
   const canStart = status === 'idle' || status === 'ended' || status === 'break-complete';
   const canPause = status === 'running' || status === 'break-running';
-  const canReset = status !== 'idle' || remainingMs !== modeDurationMs || completedIntervals !== 0;
-  const showSwitchAlert = switchAlertVisible;
+  const canReset = status !== 'idle' || remainingMs !== timerDurationMs || completedIntervals !== 0;
 
   return (
     <main className="app-shell" data-status={status}>
-      <section className={showSwitchAlert ? 'timer-card timer-card-alert' : 'timer-card'} aria-labelledby="app-title">
+      <section
+        className={switchAlertVisible ? 'timer-card timer-card-alert' : 'timer-card'}
+        aria-labelledby="app-title"
+      >
         <p className="eyebrow">Elon Task Switcher</p>
         <h1 id="app-title">Task switching timer</h1>
-        <p className="mode-label" aria-live="polite">{statusLabel(status)}</p>
-        <div className="countdown" aria-label="Time remaining">{formatTime(remainingMs)}</div>
-        <p className="next-event">{nextEvent(status, settings.autoStartNextWork)}</p>
-        {showSwitchAlert ? <p className="switch-alert" role="alert" aria-live="assertive">Timer fini - change de tache maintenant</p> : null}
+        <p className="mode-label" aria-live="polite">{describeTimerStatus(status)}</p>
+        <div className="countdown" aria-label="Time remaining">{formatRemainingTime(remainingMs)}</div>
+        <p className="next-event">{describeNextTimerEvent(status, settings.autoStartNextWork)}</p>
+        {switchAlertVisible ? (
+          <p className="switch-alert" role="alert" aria-live="assertive">Timer fini - change de tache maintenant</p>
+        ) : null}
         <p className="interval-count">Completed intervals: {completedIntervals} / {settings.intervalsBeforeBreak}</p>
 
         {audioMessage ? <p role="alert" className="audio-message">{audioMessage}</p> : null}
 
         <div className="primary-actions" aria-label="Timer controls">
-          {canStart ? <button type="button" onClick={startWork}>Start</button> : null}
-          {status === 'paused' ? <button type="button" onClick={startWork}>Resume</button> : null}
-          <button type="button" onClick={pause} disabled={!canPause}>Pause</button>
-          <button type="button" onClick={reset} disabled={!canReset}>Reset</button>
-          {status === 'ended' ? <button type="button" onClick={continueNextWork}>Next loop</button> : null}
-          {status === 'break-complete' ? <button type="button" onClick={finishBreakCycle}>Resume work</button> : null}
-          <button type="button" className="secondary" onClick={() => void ring()}>Test Reminder</button>
-          <button type="button" className="secondary" onClick={() => void testBreakTick()}>Test Break Tick</button>
+          {canStart ? <button type="button" onClick={startOrResumeWork}>Start</button> : null}
+          {status === 'paused' ? (
+            <button type="button" onClick={startOrResumeWork}>Resume</button>
+          ) : null}
+          <button type="button" onClick={pauseTimer} disabled={!canPause}>Pause</button>
+          <button type="button" onClick={resetTimer} disabled={!canReset}>Reset</button>
+          {status === 'ended' ? (
+            <button type="button" onClick={prepareNextWorkInterval}>Next loop</button>
+          ) : null}
+          {status === 'break-complete' ? (
+            <button type="button" onClick={resumeWorkAfterBreak}>Resume work</button>
+          ) : null}
+          <button type="button" className="secondary" onClick={() => void playReminderAndReportFailure()}>
+            Test Reminder
+          </button>
+          <button type="button" className="secondary" onClick={() => void previewBreakTickSound()}>
+            Test Break Tick
+          </button>
         </div>
       </section>
 
-      <section className="settings-card" aria-labelledby="settings-title">
-        <h2 id="settings-title">Settings</h2>
-        <label>
-          Work duration (minutes)
-          <input type="number" min="0.05" step="0.05" max="180" value={settings.workMinutes} onChange={(event) => updateSetting('workMinutes', Number(event.target.value))} />
-        </label>
-        <label>
-          Break duration (minutes)
-          <input type="number" min="0.05" step="0.05" max="180" value={settings.breakMinutes} onChange={(event) => updateSetting('breakMinutes', Number(event.target.value))} />
-        </label>
-        <label>
-          Intervals before break
-          <input type="number" min="1" max="180" value={settings.intervalsBeforeBreak} onChange={(event) => updateSetting('intervalsBeforeBreak', Number(event.target.value))} />
-        </label>
-        <label className="checkbox-label">
-          <input type="checkbox" checked={settings.autoStartNextWork} onChange={(event) => updateSetting('autoStartNextWork', event.target.checked)} />
-          Auto-start next task loop
-        </label>
-        <fieldset className="sound-settings">
-          <legend>Sound settings</legend>
-          <label>
-            Task switch sound
-            <select value={settings.reminderSoundId} onChange={(event) => updateSetting('reminderSoundId', event.target.value)}>
-              {REMINDER_SOUND_PRESETS.map((preset) => (
-                <option key={preset.id} value={preset.id}>{preset.label}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Task switch volume: {Math.round(settings.reminderVolume * 100)}%
-            <input type="range" min="0" max="1" step="0.05" value={settings.reminderVolume} onChange={(event) => updateSetting('reminderVolume', Number(event.target.value))} />
-          </label>
-          <label>
-            Break tick sound
-            <select value={settings.breakTickSoundId} onChange={(event) => updateSetting('breakTickSoundId', event.target.value)}>
-              {BREAK_TICK_SOUND_PRESETS.map((preset) => (
-                <option key={preset.id} value={preset.id}>{preset.label}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Break tick volume: {Math.round(settings.breakTickVolume * 100)}%
-            <input type="range" min="0" max="1" step="0.05" value={settings.breakTickVolume} onChange={(event) => updateSetting('breakTickVolume', Number(event.target.value))} />
-          </label>
-        </fieldset>
-        <button type="button" className="secondary" onClick={restoreDefaults}>Restore Defaults</button>
-      </section>
+      <SettingsPanel
+        settings={settings}
+        onSettingChange={updateSetting}
+        onRestoreDefaults={restoreDefaultSettings}
+      />
 
       <section className="project-card" aria-labelledby="project-links-title">
         <p className="eyebrow">Open source</p>
@@ -394,7 +376,7 @@ export function App() {
         </p>
         <p className="app-version" aria-label="App version">Version {APP_VERSION}</p>
         <div className="git-links" aria-label="GitHub links">
-          {GIT_LINKS.map((link) => (
+          {PROJECT_LINKS.map((link) => (
             <a key={link.href} className="git-link" href={link.href} target="_blank" rel="noreferrer">
               {link.label}
             </a>
@@ -404,5 +386,3 @@ export function App() {
     </main>
   );
 }
-
-

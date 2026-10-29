@@ -23,9 +23,18 @@ describe('App', () => {
     expect(screen.getByLabelText('Time remaining')).toHaveTextContent('05:00');
     expect(screen.getByText(/Switch task when the timer ends/i)).toBeInTheDocument();
     expect(screen.getByLabelText('App version')).toHaveTextContent(`Version ${packageJson.version}`);
-    expect(screen.getByRole('link', { name: 'Source code' })).toHaveAttribute('href', 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher');
-    expect(screen.getByRole('link', { name: 'Report an issue' })).toHaveAttribute('href', 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher/issues');
-    expect(screen.getByRole('link', { name: 'MIT license' })).toHaveAttribute('href', 'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher/blob/main/LICENSE');
+    expect(screen.getByRole('link', { name: 'Source code' })).toHaveAttribute(
+      'href',
+      'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher',
+    );
+    expect(screen.getByRole('link', { name: 'Report an issue' })).toHaveAttribute(
+      'href',
+      'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher/issues',
+    );
+    expect(screen.getByRole('link', { name: 'MIT license' })).toHaveAttribute(
+      'href',
+      'https://github.com/Elon-Task-Switcher/Elon-Task-Switcher/blob/main/LICENSE',
+    );
   });
 
   it('starts, pauses, resumes, and resets the timer', async () => {
@@ -176,7 +185,7 @@ describe('App', () => {
 
   it('unlocks audio on start and reuses the same AudioContext for the timer reminder', async () => {
     vi.useFakeTimers();
-    let createdContexts = 0;
+    let createdAudioContextCount = 0;
     const resumeAudio = vi.fn();
 
     class ReusableAudioContext {
@@ -185,7 +194,7 @@ describe('App', () => {
       destination = {};
 
       constructor() {
-        createdContexts += 1;
+        createdAudioContextCount += 1;
       }
 
       resume = vi.fn(async () => {
@@ -232,7 +241,7 @@ describe('App', () => {
       await Promise.resolve();
     });
 
-    expect(createdContexts).toBe(1);
+    expect(createdAudioContextCount).toBe(1);
     expect(resumeAudio).toHaveBeenCalledTimes(1);
 
     act(() => {
@@ -244,8 +253,6 @@ describe('App', () => {
 
     expect(screen.getByText(/Timer fini/i)).toBeInTheDocument();
     expect(screen.getByText('Work running')).toBeInTheDocument();
-    expect(createdContexts).toBe(1);
+    expect(createdAudioContextCount).toBe(1);
   });
 });
-
-
